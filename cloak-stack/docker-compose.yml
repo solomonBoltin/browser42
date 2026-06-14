@@ -1,0 +1,63 @@
+# Stealth browser + Playwright MCP + live web view. One `docker compose up`.
+#
+#   agent ──MCP/HTTP──► mcp ──CDP──► browser ◄──VNC── you (web view)
+#                                       ▲
+#                       Caddy is the only published port: it routes
+#                       /mcp and /view, and adds TLS + basic-auth.
+#
+# Local : works out of the box (SITE_ADDRESS defaults to http://localhost).
+# VPS   : set SITE_ADDRESS=your.domain + strong creds in .env, then up -d.
+
+services:
+  # ---- The one shared stealth Chromium (CDP + live view) ----------------
+  browser:
+    build: { context: ., dockerfile: Dockerfile.browser }
+    restart: unless-stopped
+    environment:
+      VNC_PASSWORD: ${VNC_PASSWORD:-changeme}
+      SCREEN_WIDTH: ${SCREEN_WIDTH:-1920}
+      SCREEN_HEIGHT: ${SCREEN_HEIGHT:-1080}
+      # Extra cloakserve flags, e.g. a residential proxy:
+      #   CLOAK_EXTRA_ARGS=--proxy-server=http://user:pass@host:port
+      CLOAK_EXTRA_ARGS: ${CLOAK_EXTRA_ARGS:-}
+    volumes:
+      - cloakprofile:/profile      # cookies/logins survive restarts
+    shm_size: "2gb"               # Chromium crashes on Docker's default 64MB
+    expose: ["9222", "6080"]      # CDP + noVNC — internal only, via Caddy
+    networks: [internal]
+
+  # ---- Official Playwright MCP, attached to the browser over CDP --------
+  mcp:
+    image: node:22-slim
+    restart: unless-stopped
+    depends_on: [browser]
+    environment:
+      PLAYWRIGHT_MCP_CDP_ENDPOINT: "http://browser:9222"
+    command: ["npx", "-y", "@playwright/mcp@latest", "--port", "8931", "--host", "0.0.0.0"]
+    expose: ["8931"]              # MCP HTTP/SSE — internal only, via Caddy
+    networks: [internal]
+
+  # ---- Public edge: routing + TLS + auth -------------------------------
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [mcp, browser]
+    ports: ["80:80", "443:443"]
+    environment:
+      # http://localhost = plain HTTP locally; a bare domain = auto-HTTPS on VPS.
+      SITE_ADDRESS: ${SITE_ADDRESS:-http://localhost}
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER:-admin}
+      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [internal]
+
+networks:
+  internal: { driver: bridge }
+
+volumes:
+  cloakprofile:
+  caddy_data:
+  caddy_config:

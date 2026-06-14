@@ -1,0 +1,23 @@
+# Stealth Chromium (headed, on a virtual display) + live web view.
+# CloakBrowser's official image already ships the patched Chromium binary,
+# Playwright system deps, and the emoji/CJK fonts aggressive anti-bot sites need.
+FROM cloakhq/cloakbrowser:latest
+
+USER root
+
+# x11vnc scrapes the virtual display; websockify+noVNC turn it into a web page;
+# fluxbox gives Chromium a window manager so it behaves like a real desktop.
+# Then symlink noVNC's vnc.html to index.html so /view/ serves the viewer.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        xvfb x11vnc fluxbox websockify novnc ca-certificates \
+    && ln -sf /usr/share/novnc/vnc.html /usr/share/novnc/index.html \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY start-browser.sh /usr/local/bin/start-browser.sh
+RUN chmod +x /usr/local/bin/start-browser.sh
+
+# 9222 = CDP (for the MCP/agent side), 6080 = noVNC web view (for the human side).
+# Neither is published to the host directly — Caddy is the only public surface.
+EXPOSE 9222 6080
+
+ENTRYPOINT ["/usr/local/bin/start-browser.sh"]

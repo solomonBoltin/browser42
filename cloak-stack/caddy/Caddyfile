@@ -1,0 +1,26 @@
+# Single entry point for both local and VPS.
+#   SITE_ADDRESS=http://localhost  -> plain HTTP, no cert (local default)
+#   SITE_ADDRESS=browser.example.com -> automatic Let's Encrypt TLS (VPS)
+{$SITE_ADDRESS:http://localhost} {
+	# One credential protects BOTH the live view and the MCP endpoint.
+	basic_auth {
+		{$BASIC_AUTH_USER:admin} {$BASIC_AUTH_HASH}
+	}
+
+	# Live browser view (noVNC): open /view/ and you SEE the agent's browser.
+	handle_path /view/* {
+		reverse_proxy browser:6080
+	}
+	# noVNC opens its websocket back to /websockify on the same origin.
+	handle /websockify {
+		reverse_proxy browser:6080
+	}
+
+	# MCP endpoint: point your MCP client at <addr>/mcp
+	handle_path /mcp* {
+		reverse_proxy mcp:8931
+	}
+
+	# Bare / -> the live view.
+	redir / /view/
+}

@@ -6,11 +6,11 @@ FROM cloakhq/cloakbrowser:latest
 USER root
 
 # x11vnc scrapes the virtual display; websockify+noVNC turn it into a web page;
-# fluxbox gives Chromium a window manager so it behaves like a real desktop.
-# Then symlink noVNC's vnc.html to index.html so /view/ serves the viewer.
+# fluxbox gives Chromium a window manager so it behaves like a real desktop;
+# wmctrl lets start-browser.sh keep the browser window maximized.
+# (start-browser.sh writes a tuned noVNC landing page at index.html.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        xvfb x11vnc fluxbox websockify novnc ca-certificates \
-    && ln -sf /usr/share/novnc/vnc.html /usr/share/novnc/index.html \
+        xvfb x11vnc fluxbox websockify novnc wmctrl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY start-browser.sh /usr/local/bin/start-browser.sh

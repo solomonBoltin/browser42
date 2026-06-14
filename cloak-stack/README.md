@@ -20,14 +20,15 @@ That's it — works the same locally and on a VPS.
 - **Live view:** open the URL below `/view/` → log in → noVNC password (`VNC_PASSWORD`).
 - **MCP:** point your client at the URL below `/mcp` with the same login.
 
-| Where | `SITE_ADDRESS` in `.env` | URLs |
-| ----- | ------------------------ | ---- |
-| Local | `http://localhost` (default) | `http://localhost/view/` · `http://localhost/mcp` |
-| VPS   | `your.domain` (bare, DNS → VPS) | `https://your.domain/view/` · `https://your.domain/mcp` |
+| Where | `.env` | URLs |
+| ----- | ------ | ---- |
+| Local | defaults (port `HTTP_PORT`) | `http://localhost:5544/view/` · `http://localhost:5544/mcp` |
+| VPS   | `SITE_ADDRESS=your.domain`, `HTTP_PORT=80`, `HTTPS_PORT=443` | `https://your.domain/view/` · `https://your.domain/mcp` |
 
 Default local login is **admin / admin**. On a VPS, edit `.env`: set `SITE_ADDRESS`
-to your domain (Caddy fetches a Let's Encrypt cert automatically), pick a strong
-`VNC_PASSWORD`, and replace `BASIC_AUTH_HASH` (double every `$` → `$$`):
+to your domain (Caddy fetches a Let's Encrypt cert automatically), set
+`HTTP_PORT=80` / `HTTPS_PORT=443`, pick a strong `VNC_PASSWORD`, and replace
+`BASIC_AUTH_HASH` (double every `$` → `$$`):
 
 ```bash
 docker run --rm caddy:2-alpine caddy hash-password --plaintext 'YOUR_PASSWORD'
@@ -36,7 +37,7 @@ docker run --rm caddy:2-alpine caddy hash-password --plaintext 'YOUR_PASSWORD'
 MCP client config (add `Authorization: Basic <base64 user:pass>` for the VPS):
 
 ```json
-{ "mcpServers": { "cloak": { "url": "http://localhost/mcp" } } }
+{ "mcpServers": { "cloak": { "url": "http://localhost:5544/mcp" } } }
 ```
 
 ## Files

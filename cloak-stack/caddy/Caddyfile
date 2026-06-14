@@ -17,8 +17,12 @@
 	}
 
 	# MCP endpoint: point your MCP client at <addr>/mcp
+	# @playwright/mcp has DNS-rebinding protection and 403s unless the Host
+	# header is its own bind address — so rewrite it to localhost:8931.
 	handle_path /mcp* {
-		reverse_proxy mcp:8931
+		reverse_proxy mcp:8931 {
+			header_up Host localhost:8931
+		}
 	}
 
 	# Bare / -> the live view.
